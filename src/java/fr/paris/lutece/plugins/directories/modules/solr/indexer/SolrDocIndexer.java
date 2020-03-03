@@ -77,7 +77,9 @@ public class SolrDocIndexer implements SolrIndexer
     private static final String PROPERTY_DESCRIPTION = "directories-solr.indexer.description";
     private static final String PROPERTY_VERSION = "directories-solr.indexer.version";
     private static final String PARAMETER_XPAGE = "page";
-    private static final String XPAGE_ENTITY = "directoryEntity";
+    private static final String XPAGE_DIRECTORIES = "directories";
+    private static final String PARAMETER_VIEW = "view";
+    private static final String PARAMETER_VIEW_ENTITY = "viewDirectoryEntity";
     private static final List<String> LIST_RESSOURCES_NAME = new ArrayList<String>( );
     private static final String SHORT_NAME = "entity";
     private static final String DOC_INDEXATION_ERROR = "[SolrDirectoriesIndexer] An error occured during the indexation of the document number ";
@@ -161,7 +163,8 @@ public class SolrDocIndexer implements SolrIndexer
         item.setTitle( document.getTitle( ) );
         // Reload the full object to get all its searchable attributes
         UrlItem url = new UrlItem( SolrIndexerService.getBaseUrl( ) );
-        url.addParameter( PARAMETER_XPAGE, XPAGE_ENTITY );
+        url.addParameter( PARAMETER_XPAGE, XPAGE_DIRECTORIES );
+        url.addParameter( PARAMETER_VIEW , PARAMETER_VIEW_ENTITY );
         url.addParameter( PARAMETER_ENTITY_ID, document.getId( ) );
         item.setUrl( url.getUrl( ) );
         // Date Hierarchy

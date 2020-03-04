@@ -59,6 +59,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.GregorianCalendar;
 import java.util.List;
+import java.util.Map;
 
 /**
  * The indexer service for Solr.
@@ -67,8 +68,6 @@ import java.util.List;
 public class SolrDocIndexer implements SolrIndexer
 {
     public static final String BEAN_NAME = "directories-solr.solrDocIndexer";
-    // Not used
-    // private static final String PARAMETER_SOLR_DOCUMENT_ID = "solr_document_id";
     private static final String TYPE = "directories";
     private static final String PARAMETER_ENTITY_ID = "entity_id";
     private static final String PROPERTY_INDEXER_ENABLE = "solr.indexer.document.enable";
@@ -164,7 +163,7 @@ public class SolrDocIndexer implements SolrIndexer
         // Reload the full object to get all its searchable attributes
         UrlItem url = new UrlItem( SolrIndexerService.getBaseUrl( ) );
         url.addParameter( PARAMETER_XPAGE, XPAGE_DIRECTORIES );
-        url.addParameter( PARAMETER_VIEW , PARAMETER_VIEW_ENTITY );
+        url.addParameter( PARAMETER_VIEW, PARAMETER_VIEW_ENTITY );
         url.addParameter( PARAMETER_ENTITY_ID, document.getId( ) );
         item.setUrl( url.getUrl( ) );
         // Date Hierarchy
@@ -212,15 +211,15 @@ public class SolrDocIndexer implements SolrIndexer
     private static String getContentToIndex( DirectoryEntity document, SolrItem item )
     {
         StringBuilder sbContentToIndex = new StringBuilder( );
-        sbContentToIndex.append( document.getUserAdmin( document.getId( ) ) );
         for ( Response response : document.getResponses( ) )
         {
             String value = response.getResponseValue( );
             if ( value != null && !value.equals( "null" ) )
             {
                 sbContentToIndex.append( " " );
-                sbContentToIndex.append( response.getResponseValue( ) );
-                item.addDynamicField( "attribute" + response.getEntry( ).getIdEntry( ), response.getResponseValue( ) );
+                sbContentToIndex.append( value );
+                String strFieldName = "attribute" + response.getEntry( ).getIdEntry( );
+                item.addDynamicField( strFieldName, fillDynamicField( item, strFieldName, value ) );
             }
         }
         return sbContentToIndex.toString( );
@@ -296,5 +295,21 @@ public class SolrDocIndexer implements SolrIndexer
         StringBuilder sb = new StringBuilder( strResourceId );
         sb.append( SolrConstants.CONSTANT_UNDERSCORE ).append( SHORT_NAME );
         return sb.toString( );
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    private static String fillDynamicField( SolrItem solrItem, String strFieldName, String strDynamicFieldName )
+    {
+        Map<String, Object> listDynamicFields = solrItem.getDynamicFields( );
+        for ( Object key : listDynamicFields.keySet( ) )
+        {
+            if ( key.toString( ).equals( strFieldName + "_text" ) )
+            {
+                strDynamicFieldName = strDynamicFieldName + " " + listDynamicFields.get( key );
+            }
+        }
+        return strDynamicFieldName;
     }
 }

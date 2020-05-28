@@ -36,6 +36,7 @@ package fr.paris.lutece.plugins.directories.modules.solr.indexer;
 import fr.paris.lutece.plugins.directories.business.DirectoryEntity;
 import fr.paris.lutece.plugins.directories.service.DirectoriesService;
 import fr.paris.lutece.plugins.directories.util.DirectoriesUtils;
+import fr.paris.lutece.plugins.genericattributes.business.FieldHome;
 import fr.paris.lutece.plugins.genericattributes.business.Response;
 import fr.paris.lutece.plugins.search.solr.business.field.Field;
 import fr.paris.lutece.plugins.search.solr.indexer.SolrIndexer;
@@ -214,6 +215,16 @@ public class SolrDocIndexer implements SolrIndexer
         for ( Response response : document.getResponses( ) )
         {
             String value = response.getResponseValue( );
+
+            if( response.getField() != null ) {
+
+                int nIdField = response.getField().getIdField();
+                fr.paris.lutece.plugins.genericattributes.business.Field field = FieldHome
+                        .findByPrimaryKey(nIdField);
+
+                value = field.getTitle();
+            }
+
             if ( value != null && !value.equals( "null" ) )
             {
                 sbContentToIndex.append( " " );

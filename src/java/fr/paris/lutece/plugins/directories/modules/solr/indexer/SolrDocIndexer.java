@@ -36,6 +36,7 @@ package fr.paris.lutece.plugins.directories.modules.solr.indexer;
 import fr.paris.lutece.plugins.directories.business.DirectoryEntity;
 import fr.paris.lutece.plugins.directories.service.DirectoriesService;
 import fr.paris.lutece.plugins.directories.util.DirectoriesUtils;
+import fr.paris.lutece.plugins.genericattributes.business.Entry;
 import fr.paris.lutece.plugins.genericattributes.business.FieldHome;
 import fr.paris.lutece.plugins.genericattributes.business.Response;
 import fr.paris.lutece.plugins.search.solr.business.field.Field;
@@ -47,6 +48,8 @@ import fr.paris.lutece.portal.service.util.AppException;
 import fr.paris.lutece.portal.service.util.AppLogService;
 import fr.paris.lutece.portal.service.util.AppPropertiesService;
 import fr.paris.lutece.util.url.UrlItem;
+import javassist.expr.NewArray;
+
 import org.apache.tika.exception.TikaException;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.parser.ParseContext;
@@ -56,11 +59,15 @@ import org.xml.sax.ContentHandler;
 import org.xml.sax.SAXException;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.text.Normalizer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.GregorianCalendar;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * The indexer service for Solr.
@@ -212,28 +219,50 @@ public class SolrDocIndexer implements SolrIndexer
     private static String getContentToIndex( DirectoryEntity document, SolrItem item )
     {
         StringBuilder sbContentToIndex = new StringBuilder( );
-        for ( Response response : document.getResponses( ) )
-        {
-            String value = response.getResponseValue( );
+        List<Response> listResponse = document.getResponses( );
 
-            if( response.getField() != null ) {
+        Map<Entry, List<Response>> entryMap = listResponse.stream( ).collect( Collectors.groupingBy( Response::getEntry ) );
 
-                int nIdField = response.getField().getIdField();
-                fr.paris.lutece.plugins.genericattributes.business.Field field = FieldHome
-                        .findByPrimaryKey(nIdField);
+        entryMap.forEach( ( entry, listResponseFiltered ) -> {
 
-                value = field.getTitle();
-            }
+            String strFieldName = "attribute" + listResponseFiltered.get( 0 ).getEntry( ).getIdEntry( );
+            List<String> valueList = new ArrayList<>( );
 
-            if ( value != null && !value.equals( "null" ) )
+            if ( listResponseFiltered.get( 0 ).getField( ) != null )
             {
-                sbContentToIndex.append( " " );
-                sbContentToIndex.append( value );
-                String strFieldName = "attribute" + response.getEntry( ).getIdEntry( );
-                item.addDynamicField( strFieldName, fillDynamicField( item, strFieldName, value ) );
+                for ( Response response : listResponseFiltered )
+                {
+                    int nIdField = response.getField( ).getIdField( );
+                    fr.paris.lutece.plugins.genericattributes.business.Field field = FieldHome.findByPrimaryKey( nIdField );
+                    String value = field.getTitle( );
+                    if ( value == null )
+                    {
+                        value = response.getResponseValue( );
+                    }
+                    valueList.add( value );
+                    sbContentToIndex.append( " " );
+                    sbContentToIndex.append( value );
+                }
+                item.addDynamicField( strFieldName, valueList );
             }
-        }
-        return sbContentToIndex.toString( );
+            else
+            {
+                String value = listResponseFiltered.get( 0 ).getResponseValue( );
+                if ( value != null )
+                {
+                    item.addDynamicField( strFieldName, value );
+                    item.addDynamicFieldNotAnalysed( strFieldName, value );
+                    sbContentToIndex.append( " " );
+                    sbContentToIndex.append( value );
+                }
+            }
+        } );
+
+        String strContentDistinct = Arrays.stream( sbContentToIndex.toString( ).split( "\\s+" ) ).distinct( ).collect( Collectors.joining( " " ) );
+        String newStrContentDistinct = strContentDistinct.replaceAll( "null", "" );
+        StringBuilder sb = new StringBuilder( newStrContentDistinct );
+
+        return sb.toString( );
     }
 
     // GETTERS & SETTERS
@@ -308,19 +337,4 @@ public class SolrDocIndexer implements SolrIndexer
         return sb.toString( );
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    private static String fillDynamicField( SolrItem solrItem, String strFieldName, String strDynamicFieldName )
-    {
-        Map<String, Object> listDynamicFields = solrItem.getDynamicFields( );
-        for ( Object key : listDynamicFields.keySet( ) )
-        {
-            if ( key.toString( ).equals( strFieldName + "_text" ) )
-            {
-                strDynamicFieldName = strDynamicFieldName + " " + listDynamicFields.get( key );
-            }
-        }
-        return strDynamicFieldName;
-    }
 }
